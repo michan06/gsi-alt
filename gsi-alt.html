@@ -1,0 +1,185 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0" />
+<title>GSImap 標高データ</title>
+
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+<script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+<script src="/js/jquery.js"></script>
+
+</head>
+<style>
+html, body {
+    width: 100%;
+    height: 100%;
+	margin:0 ;
+}
+#head {
+	height:50px ;
+}
+#i_div {
+	width:500px ;
+}
+#map {
+    width: 100%;
+    height: calc(100% - 50px) ; 
+}
+</style>
+<script>
+$(function() {
+	var map = new amap() ;
+	map.init('map',{center:[35.7, 139.6],zoom:11}) ;
+
+	$('#i_div').on('change',function() {
+		map.div = $(this).val() ;
+		$('#n_div').html(map.div) ;
+		setTimeout(function(){map.altMap.redraw();},0) ;
+	})
+	$('#i_alpha').on('change',function() {
+		map.alpha = $(this).val()/1000 ;
+		$('#n_alpha').html(map.alpha) ;
+		setTimeout(function(){map.altMap.redraw();},0) ;
+	})
+})
+
+
+function amap() {
+	this.map = null ;
+	this.div = 100 ;
+	this.paleBase = null;
+	this.stdBase = null ;
+	this.tileAxis = null ;
+	this.altMap = null ;
+	this.acache = null ;
+	this.alpha = 0.5 ;
+}
+
+amap.prototype.init  = function(mapbase,mapinit) {
+	this.paleBase = L.tileLayer('http://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+	    attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html' target='_blank'>国土地理院</a>"
+	});
+	this.stdBase = L.tileLayer('http://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+	    attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html' target='_blank'>国土地理院</a>"
+	});
+	this.altBase = L.tileLayer('http://cyberjapandata.gsi.go.jp/xyz/relief/{z}/{x}/{y}.png', {
+	    attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html' target='_blank'>国土地理院</a>"
+	});
+	this.blankBase = L.tileLayer('http://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png', {
+	    attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html' target='_blank'>国土地理院</a>"
+	});
+	this.tileAxis = L.tileLayer.canvas({async:false,continuousWorld:true});
+	this.tileAxis.drawTile = function(canvas, tilePoint, zoom) {
+		var w = Math.pow(2,zoom) ;
+		if(tilePoint.x<0 || tilePoint.y<0 || tilePoint.x>=w || tilePoint.y>=w) return ;
+		var ctx = canvas.getContext('2d');
+		ctx.font = "bold 20px 'Arial'";
+		ctx.strokeRect(0,0,255,255) ;
+		ctx.fillStyle = 'rgba(200,200,200,0.5)';
+		ctx.fillRect(1,1,150,25);
+		ctx.fillStyle = '#222';
+//		ctx.fillText(zoom+"/"+tilePoint.x/w+","+tilePoint.y/w,10,20) ;
+		ctx.fillText(zoom+"-"+tilePoint.x+"-"+tilePoint.y,10,20) ;	
+	};
+	var self = this ;
+	this.acache = [] ;
+	this.altMap = L.tileLayer.canvas({async:false,continuousWorld:true});
+	this.altMap.drawTile = function(canvas, tilePoint, zoom) {
+		var w = Math.pow(2,zoom) ;
+		var tpx = tilePoint.x ;
+		var tpy = tilePoint.y ;
+		if(tilePoint.x<0 || tilePoint.y<0 || tilePoint.x>=w || tilePoint.y>=w) return ;
+		var tm = 1 ;
+		var ox=0,oy = 0;
+		if(zoom>14) {
+			tm = Math.pow(2,(zoom-14)) ;
+			tpx = Math.floor(tpx / tm) ;
+			tpy = Math.floor(tpy / tm) ; 
+			ox = Math.floor((tilePoint.x % tm)*256/tm );
+			oy = Math.floor((tilePoint.y % tm)*256/tm) ;	
+			z = 14;		
+		} else z = zoom ;
+
+		var tid = z+"/"+tpx+"/"+tpy ;
+		canvas.setAttribute('data-tid',tid) ;
+		canvas.addEventListener("mousemove", function(e) {
+			var tid = this.getAttribute('data-tid') ;
+			if(self.acache[tid])
+				$('#axis').html(self.acache[tid][Math.floor(e.offsetY/tm)+oy][Math.floor(e.offsetX/tm)+ox]);
+		})
+
+		var pa = {'div':self.div,'tm':tm,'ox':ox,'oy':oy,alpha:Math.floor(self.alpha*256)}; 
+		if(self.acache[tid]) {
+			drawalt(canvas,self.acache[tid],pa) ;
+		} else {
+			$.ajax({
+				'method':"get" ,
+				'url':"http://cyberjapandata.gsi.go.jp/xyz/dem/"+z+"/"+tpx+"/"+tpy+".txt"
+			}).done(function(r) {
+//				console.log("get "+tpx+"/"+tpy) ;
+
+				var l = r.split("\n") ;
+				for(var i=0;i<l.length;i++) l[i] = l[i].split(",") ;
+				self.acache[tid] = l ;
+//				console.log(l) ;
+				drawalt(canvas,l,pa);
+			});
+		}
+	};
+	function drawalt(canvas,l,pa) {
+			var ctx = canvas.getContext('2d');
+			var im = ctx.createImageData(canvas.width,canvas.height) ;
+			var dat = im.data ;
+			var ic = 0 ;
+			var gamma = 1/2.2 ;
+			for(var y=0;y<256;y++) {
+				var iy = Math.floor(y/pa.tm)+pa.oy ;
+				for(var x=0;x<256;x++) {
+					var p= l[iy][Math.floor(x/pa.tm)+pa.ox] ;
+					if(p=="e") {
+						dat[ic++] = 0 ;
+						dat[ic++] = 128 ;
+						dat[ic++] = 128 ;
+						dat[ic++] = pa.alpha ;
+					} else {
+						var px = Math.floor(Math.pow((pa.div - (parseFloat(p) % pa.div))/pa.div,gamma) *256.0) ;
+						dat[ic++] = px ;
+						dat[ic++] = px ;
+						dat[ic++] = px ;
+						dat[ic++] = pa.alpha ;						
+					}
+				}
+			}
+			ctx.putImageData(im,0,0) ;
+	}
+	mapinit.layers = [this.paleBase,this.altMap] ;
+	this.map = L.map(mapbase,mapinit);
+	var baseMaps = {"地理院地図":this.stdBase,"地理院淡色":this.paleBase,"色別標高":this.altBase,"白地図":this.blankBase} ;
+	var overlayMaps = {"タイル座標":this.tileAxis,"標高":this.altMap}
+	
+	L.control.layers(baseMaps,overlayMaps).addTo(this.map) ;
+
+	this.map.on('click', function(e) {
+//		console.log(e) ;
+	});	
+	this.map.on('zoomstart',function(e) {
+		console.log(e.target.getZoom()) ;
+		self.acache = [] ;		
+	})
+}
+</script>
+<body>
+	<div id=head>
+		等高線間隔:<calc id=n_div>100</calc>m<input type=range id=i_div min=1 max=500 value=100 /><br/>
+		透過度:<calc id=n_alpha>0.5</calc><input type=range id=i_alpha min=0 max=1000 value=500 /> 標高<calc id=axis></calc>m
+		</div>
+    <div id="map"></div>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
+
