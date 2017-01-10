@@ -27,7 +27,50 @@ html, body {
     width: 100%;
     height: calc(100% - 50px) ; 
 }
-</style>
+.is-hide{
+ display:none; 
+}
+.loading{
+  position:fixed;
+  top:0;
+  right:0;
+  bottom:0;
+  left:0;
+  background:rgba(0,0,0,.5);
+}
+.loading::before{
+  content:"";
+  display:block;
+  position:fixed;
+  left:50%;
+  top:50%;
+  width:50px;
+  height:50px;
+  border-radius:5px;
+  margin-top:-15px;
+  margin-left:-15px;
+  background:white;
+}
+.loading::after{
+  content:"";
+  display:block;
+  position:fixed;
+  left:50%;
+  top:50%;
+  width:32px;
+  height:32px;
+  border-radius:20px;
+  margin-top:-10px;
+  margin-left:-10px;
+  border:4px solid #60ABB9;
+  border-right:4px solid white;
+  animation: rotate 1s infinite linear;
+}
+@keyframes rotate {
+  0%    { transform: rotate(0deg); }
+  100%  { transform: rotate(360deg); }
+}
+	</style>
 <script>
 $(function() {
 	var map = new amap() ;
@@ -129,6 +172,8 @@ amap.prototype.init  = function(mapbase,mapinit) {
 		}
 	};
 	function drawalt(canvas,l,pa) {
+			var $loading = $(".loading");
+			$loading.removeClass("is-hide");
 			var ctx = canvas.getContext('2d');
 			var im = ctx.createImageData(canvas.width,canvas.height) ;
 			var dat = im.data ;
@@ -153,6 +198,7 @@ amap.prototype.init  = function(mapbase,mapinit) {
 				}
 			}
 			ctx.putImageData(im,0,0) ;
+			$loading.addClass("is-hide");
 	}
 	mapinit.layers = [this.paleBase,this.altMap] ;
 	this.map = L.map(mapbase,mapinit);
@@ -171,6 +217,11 @@ amap.prototype.init  = function(mapbase,mapinit) {
 }
 </script>
 <body>
+<button id="ajax">ajax</button>
+<ul id="list"></ul>
+<div class="loading">
+	<div class="loading_icon"></div>
+</div>
 	<div id=head>
 		等高線間隔:<calc id=n_div>100</calc>m<input type=range id=i_div min=1 max=500 value=100 /><br/>
 		透過度:<calc id=n_alpha>0.5</calc><input type=range id=i_alpha min=0 max=1000 value=500 /> 標高<calc id=axis></calc>m
