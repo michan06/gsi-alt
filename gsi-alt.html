@@ -31,13 +31,13 @@ html, body {
 <script>
 $(function() {
 	var map = new amap() ;
-	map.init('map',{center:[35.7, 139.6],zoom:11}) ;
+	map.init('map',{center:[34.790184,135.528545],zoom:11}) ;
 
 	$('#i_div').on('change',function() {
 		map.div = $(this).val() ;
 		$('#n_div').html(map.div) ;
-		setTimeout(function(){map.altMap.redraw();},0) ;
-	})
+		setTimeout(function(){map.altMap.redraw();},0) ;	
+})
 	$('#i_alpha').on('change',function() {
 		map.alpha = $(this).val()/1000 ;
 		$('#n_alpha').html(map.alpha) ;
