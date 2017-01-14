@@ -104,7 +104,7 @@ amap.prototype.init  = function(mapbase,mapinit) {
 
 		var tid = z+"/"+tpx+"/"+tpy ;
 		canvas.setAttribute('data-tid',tid) ;
-		canvas.addEventListener("mousemove", function(e) {
+		canvas.addEventListener("mousemove onclick", function(e) {
 			var tid = this.getAttribute('data-tid') ;
 			if(self.acache[tid])
 				$('#axis').html(self.acache[tid][Math.floor(e.offsetY/tm)+oy][Math.floor(e.offsetX/tm)+ox]);
