@@ -109,7 +109,7 @@ amap.prototype.init  = function(mapbase,mapinit) {
 			if(self.acache[tid])
 				$('#axis').html(self.acache[tid][Math.floor(e.offsetY/tm)+oy][Math.floor(e.offsetX/tm)+ox]);
 		})
-		canvas.addEventListener("onclick", function(e) {
+		canvas.addEventListener("click", function(e) {
 			var tid = this.getAttribute('data-tid') ;
 			if(self.acache[tid])
 				$('#axis').html(self.acache[tid][Math.floor(e.offsetY/tm)+oy][Math.floor(e.offsetX/tm)+ox]);
