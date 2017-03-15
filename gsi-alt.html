@@ -181,6 +181,7 @@ amap.prototype.init  = function(mapbase,mapinit) {
 		L.circle(e.latlng, radius).addTo(this.map);
 	}
 	this.map.on('locationfound', onLocationFound);
+	this.map.locate({setView: true, maxZoom: 16});
 }
 </script>
 <body>
